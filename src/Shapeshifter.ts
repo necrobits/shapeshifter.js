@@ -1,8 +1,22 @@
-import _, { extend } from "lodash";
+import _ from "lodash";
+import { TerminalShapeshifter } from "./TerminalShapeshifter";
+import { ShapeshiftingSchema, TerminalShapeshifterFullConfig, TerminalShapeshifterConfig } from "./types";
 
+/**
+ * Shapeshifter can transform an object from one shape to another
+ *  by following the provided transformation schema.
+ * 
+ * You can create a Shapeshifter by called Shapeshifter.create(schema)
+ * 
+ */
 export class Shapeshifter{
     private constructor(private schema: Map<string, TerminalShapeshifter | Shapeshifter> = new Map(), private toKey?: string) { }
 
+    /**
+     * Transform the object using the provided schema
+     * 
+     * @param obj The object to transform
+     */
     public transform(obj: any) {
         if (_.isArray(obj)) {
             return _.map(obj, (o) => this.transform(o));
@@ -16,6 +30,11 @@ export class Shapeshifter{
         return result;
     }
 
+    /**
+     * Create a Shapeshifter from a schema.
+     * 
+     * @param config The schema to use for the transformation
+     */
     public static create(config: ShapeshiftingSchema): Shapeshifter {
         return Shapeshifter._create(config);
     }
@@ -46,52 +65,5 @@ export class Shapeshifter{
             }
         }
         return new Shapeshifter(map, toKey);
-    }
-}
-
-type ValueMappingFunction = (value: any, obj: any) => any;
-
-type ShapeshiftingSchemaKey = Exclude<string, number | symbol | '__nested__' | '__array__' | '__to__'>;
-
-type TerminalShapeshifterFullConfig<InputType = any> = {
-    to: string;
-    mapping: ValueMappingFunction;
-}
-
-type TerminalShapeshifterConfig = string | boolean | true | ValueMappingFunction | TerminalShapeshifterFullConfig;
-
-type ShapeshiftingSchemaBody = {
-    [K in ShapeshiftingSchemaKey]: ShapeshiftingSchema| TerminalShapeshifterConfig;
-}
-
-type ShapeshiftingSchema = {
-    __nested__?: boolean;
-    __array__?: boolean;
-    __to__?: string;
-} & ShapeshiftingSchemaBody;
-
-class TerminalShapeshifter {
-    private constructor(private toKey: string, private mappingFn: ValueMappingFunction) {
-    }
-
-    transform(value: any, obj?: any) {
-        return this.mappingFn(value, obj);
-    }
-
-    get targetKey() {
-        return this.toKey;
-    }
-
-    static create(fromKey: string, config: TerminalShapeshifterConfig): TerminalShapeshifter {
-        if (_.isString(config)) {
-            return new TerminalShapeshifter(<string>config, (value, obj) => value);
-        } else if (_.isBoolean(config)) {
-            return new TerminalShapeshifter(fromKey, (value, obj) => value);
-        } else if (_.isFunction(config)) {
-            return new TerminalShapeshifter(fromKey, <ValueMappingFunction>config);
-        } else if (_.isObject(config)) {
-            const { to, mapping } = <TerminalShapeshifterFullConfig>config;
-            return new TerminalShapeshifter(to, mapping);
-        }
     }
 }
